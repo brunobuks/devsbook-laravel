@@ -221,7 +221,6 @@ class FeedController extends Controller
         }
 
         return $postList;
-        
     }
 
 }
