@@ -6,7 +6,6 @@ use DateTime;
 use App\Models\User;
 use App\Models\UserRelation;
 use App\Models\Post;
-use Illuminate\Contracts\Auth\Authenticatable;
 use Illuminate\Http\Request;
 use Illuminate\Support\Facades\Auth;
 use Intervention\Image\ImageManager;
