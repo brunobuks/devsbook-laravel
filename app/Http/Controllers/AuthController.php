@@ -38,13 +38,13 @@ class AuthController extends Controller
             return $log;
     }
 
-    public function logout(Request $request)
+    public function logout()
     {
         Auth::logout();
         return ['message' => ''];
     }
 
-    public function refresh(Request $request)
+    public function refresh()
     {
         $token = Auth::refresh();
         return [
