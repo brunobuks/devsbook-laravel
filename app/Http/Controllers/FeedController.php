@@ -43,26 +43,26 @@ class FeedController extends Controller
                 break;
 
                 case 'photo':
-                    if($photo) {
-                        if(in_array($photo->getClientMimeType(), $allowedTypes)) {
-                            $fileName = md5(time() . rand(0, 9999)) . '.jpg';
-
-                            $destinationPath = public_path('/media/uploads');
-
-                            $manager = ImageManager::usingDriver(Driver::class);
-                            $img = $manager->decode($photo->path())
-                                ->scale(800)
-                                ->save($destinationPath . '/' . $fileName);
-
-                                $body = $fileName;
-                        } else {
-                            $log['message'] = 'File type not supported.';
-                            return $log;
-                        }
-                    } else {
+                    if(!$photo) {
                         $log['message'] = 'File not sent.';
                         return $log;
                     }
+                    
+                    if(!in_array($photo->getClientMimeType(), $allowedTypes)) {
+                        $log['message'] = 'File type not supported.';
+                        return $log;
+                    }
+                    
+                    $fileName = md5(time() . rand(0, 9999)) . '.jpg';
+
+                    $destinationPath = public_path('/media/uploads');
+
+                    $manager = ImageManager::usingDriver(Driver::class);
+                    $img     = $manager->decode($photo->path())
+                                        ->scale(800)
+                                        ->save($destinationPath . '/' . $fileName);
+                        
+                    $body = $fileName;
                 break;
 
                 default:
@@ -222,5 +222,4 @@ class FeedController extends Controller
 
         return $postList;
     }
-
 }
