@@ -98,7 +98,7 @@ class FeedController extends Controller
         $perPage = 2;
 
         $postList = Post::where('id_user', $id)
-                    ->orderBy('create_at', 'desc')
+                    ->orderBy('created_at', 'desc')
                     ->offset($page * $perPage)
                     ->limit($perPage)
                     ->get();
@@ -162,7 +162,7 @@ class FeedController extends Controller
 
         $postList = Post::where('id_user', $id)
                     ->where('type', 'photo')
-                    ->orderBy('create_at', 'desc')
+                    ->orderBy('created_at', 'desc')
                     ->offset($page * $perPage)
                     ->limit($perPage)
                     ->get();
