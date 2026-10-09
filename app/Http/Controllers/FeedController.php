@@ -86,13 +86,9 @@ class FeedController extends Controller
         return $log;
     }
 
-    public function userFeed(Request $request, $id = false)
+    public function userFeed(Request $request, $id = null)
     {
-        $log = ['message' => ''];
-
-        if ($id == false) {
-            $id = $this->loggedUser->id;
-        }
+        $id = $id ?: $this->loggedUser->id;
 
         $page    = intval($request->input('page'));
         $perPage = 2;
@@ -108,11 +104,12 @@ class FeedController extends Controller
 
         $posts = $this->postListToObject($postList, $this->loggedUser->id);
 
-        $log['posts']       = $posts;
-        $log['pageCount']   = $pageCount;
-        $log['currentPage'] = $page;
-
-        return $log;
+        return [
+            'message'     => '',
+            'posts'       => $posts,
+            'pageCount'   => $pageCount,
+            'currentPage' => $page
+        ];
     }
 
     public function read(Request $request)
