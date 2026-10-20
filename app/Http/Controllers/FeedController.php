@@ -17,6 +17,7 @@ use Intervention\Image\Drivers\Gd\Driver;
 class FeedController extends Controller
 {
     private ?Authenticatable $loggedUser;
+    private const LIMIT = 2;
 
     public function __construct()
     {
@@ -105,7 +106,6 @@ class FeedController extends Controller
         $posts = $this->postListToObject($postList, $this->loggedUser->id);
 
         return [
-            'message'     => '',
             'posts'       => $posts,
             'pageCount'   => $pageCount,
             'currentPage' => $page
@@ -114,19 +114,11 @@ class FeedController extends Controller
 
     public function read(Request $request)
     {
-        $log = ['message' => ''];
+        $page    = max(0, $request->integer('page'));
+        $perPage = self::LIMIT;
 
-        $page    = intval($request->input('page'));
-        $perPage = 2;
-
-        $users    = [];
-        $userList = UserRelation::where('user_from', $this->loggedUser->id)->get();
-
-        foreach($userList as $userPost) {
-            $users[] = $userPost['user_to'];
-        }
-
-        $users[] = $this->loggedUser->id;
+        $users = UserRelation::where('user_from', $this->loggedUser->id)->pluck('user_to');
+        $users->push($this->loggedUser->id);
 
         $postList = Post::whereIn('id_user', $users)
                     ->orderBy('created_at', 'desc')
@@ -139,11 +131,11 @@ class FeedController extends Controller
 
         $posts = $this->postListToObject($postList, $this->loggedUser->id);
 
-        $log['posts']       = $posts;
-        $log['pageCount']   = $pageCount;
-        $log['currentPage'] = $page;
-                
-        return $log;
+        return [
+            'posts'       => $posts,
+            'pageCount'   => $pageCount,
+            'currentPage' => $page
+        ];
     }
 
     public function UserPhotos(Request $request, $id = false)
