@@ -11,8 +11,11 @@ use Illuminate\Contracts\Auth\Authenticatable;
 use Illuminate\Database\Eloquent\Collection;
 use Illuminate\Http\Request;
 use Illuminate\Support\Facades\Auth;
+use Illuminate\Support\Facades\Log;
 use Intervention\Image\ImageManager;
 use Intervention\Image\Drivers\Gd\Driver;
+
+use Throwable;
 
 class FeedController extends Controller
 {
@@ -55,14 +58,23 @@ class FeedController extends Controller
                     }
                     
                     $fileName = md5(time() . rand(0, 9999)) . '.jpg';
-
                     $destinationPath = public_path('/media/uploads');
 
                     $manager = ImageManager::usingDriver(Driver::class);
-                    $img     = $manager->decode($photo->path())
-                                        ->scale(800)
-                                        ->save($destinationPath . '/' . $fileName);
-                        
+
+                    try {
+                        $manager->decode($photo->path())
+                                ->scale(800)
+                                ->save($destinationPath . '/' . $fileName);
+                    } catch(Throwable $e) {
+                        Log::error('No image saved.', [
+                            'error'   => $e->getMessage(),
+                            'user_id' => $this->loggedUser->id
+                        ]);
+
+                        return ['message' => 'Error to save image.'];
+                    }
+
                     $body = $fileName;
                 break;
 
