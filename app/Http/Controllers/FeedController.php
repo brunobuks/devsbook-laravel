@@ -11,12 +11,16 @@ use Illuminate\Contracts\Auth\Authenticatable;
 use Illuminate\Database\Eloquent\Collection;
 use Illuminate\Http\Request;
 use Illuminate\Support\Facades\Auth;
+use Illuminate\Support\Facades\Log;
 use Intervention\Image\ImageManager;
 use Intervention\Image\Drivers\Gd\Driver;
+
+use Throwable;
 
 class FeedController extends Controller
 {
     private ?Authenticatable $loggedUser;
+    private const LIMIT = 2;
 
     public function __construct()
     {
@@ -54,14 +58,23 @@ class FeedController extends Controller
                     }
                     
                     $fileName = md5(time() . rand(0, 9999)) . '.jpg';
-
                     $destinationPath = public_path('/media/uploads');
 
                     $manager = ImageManager::usingDriver(Driver::class);
-                    $img     = $manager->decode($photo->path())
-                                        ->scale(800)
-                                        ->save($destinationPath . '/' . $fileName);
-                        
+
+                    try {
+                        $manager->decode($photo->path())
+                                ->scale(800)
+                                ->save($destinationPath . '/' . $fileName);
+                    } catch(Throwable $e) {
+                        Log::error('No image saved.', [
+                            'error'   => $e->getMessage(),
+                            'user_id' => $this->loggedUser->id
+                        ]);
+
+                        return ['message' => 'Error to save image.'];
+                    }
+
                     $body = $fileName;
                 break;
 
@@ -90,8 +103,8 @@ class FeedController extends Controller
     {
         $id = $id ?: $this->loggedUser->id;
 
-        $page    = intval($request->input('page'));
-        $perPage = 2;
+        $page    = max(0, $request->integer('page'));
+        $perPage = self::LIMIT;
 
         $postList = Post::where('id_user', $id)
                     ->orderBy('created_at', 'desc')
@@ -105,7 +118,6 @@ class FeedController extends Controller
         $posts = $this->postListToObject($postList, $this->loggedUser->id);
 
         return [
-            'message'     => '',
             'posts'       => $posts,
             'pageCount'   => $pageCount,
             'currentPage' => $page
@@ -114,19 +126,11 @@ class FeedController extends Controller
 
     public function read(Request $request)
     {
-        $log = ['message' => ''];
+        $page    = max(0, $request->integer('page'));
+        $perPage = self::LIMIT;
 
-        $page    = intval($request->input('page'));
-        $perPage = 2;
-
-        $users    = [];
-        $userList = UserRelation::where('user_from', $this->loggedUser->id)->get();
-
-        foreach($userList as $userPost) {
-            $users[] = $userPost['user_to'];
-        }
-
-        $users[] = $this->loggedUser->id;
+        $users = UserRelation::where('user_from', $this->loggedUser->id)->pluck('user_to');
+        $users->push($this->loggedUser->id);
 
         $postList = Post::whereIn('id_user', $users)
                     ->orderBy('created_at', 'desc')
@@ -139,23 +143,19 @@ class FeedController extends Controller
 
         $posts = $this->postListToObject($postList, $this->loggedUser->id);
 
-        $log['posts']       = $posts;
-        $log['pageCount']   = $pageCount;
-        $log['currentPage'] = $page;
-                
-        return $log;
+        return [
+            'posts'       => $posts,
+            'pageCount'   => $pageCount,
+            'currentPage' => $page
+        ];
     }
 
-    public function UserPhotos(Request $request, $id = false)
+    public function userPhotos(Request $request, $id = null)
     {
-        $log = ['message' => ''];
+        $id = $id ?: $this->loggedUser->id;
 
-        if ($id == false) {
-            $id = $this->loggedUser->id;
-        }
-
-        $page    = intval($request->input('page'));
-        $perPage = 2;
+        $page    = max(0, $request->integer('page'));
+        $perPage = self::LIMIT;
 
         $postList = Post::where('id_user', $id)
                     ->where('type', 'photo')
@@ -171,15 +171,16 @@ class FeedController extends Controller
 
         $posts = $this->postListToObject($postList, $this->loggedUser->id);
 
-        foreach($posts as $key => $post) {
-            $posts[$key]['body'] = url('media/uploads/' . $posts[$key]['body']);
-        }
+        $posts->transform(function ($post) {
+            $post['body'] = url('media/uploads/' . $post['body']);
+            return $post;
+        });
 
-        $log['posts']       = $posts;
-        $log['pageCount']   = $pageCount;
-        $log['currentPage'] = $page;
-
-        return $log;
+        return [
+            'posts'       => $posts,
+            'pageCount'   => $pageCount,
+            'currentPage' => $page
+        ];
     }
 
     private function postListToObject(Collection $postList, int $loggedId)
