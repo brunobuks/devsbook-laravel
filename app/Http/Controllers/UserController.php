@@ -8,6 +8,7 @@ use App\Models\UserRelation;
 use App\Models\Post;
 use Illuminate\Http\Request;
 use Illuminate\Support\Facades\Auth;
+use Illuminate\Support\Facades\Validator;
 use Intervention\Image\ImageManager;
 use Intervention\Image\Drivers\Gd\Driver;
 
@@ -28,29 +29,51 @@ class UserController extends Controller
     {
         $log = ['message' => ''];
 
-        $name            = $request->input('name');
         $email           = $request->input('email');
+        $emailConfirm    = $request->input('email_confirm');
         $birthdate       = $request->input('birthdate');
-        $city            = $request->input('city');
-        $work            = $request->input('work');
         $password        = $request->input('password');
         $passwordConfirm = $request->input('password_confirm');
 
         $user = $this->loggedUser;
 
-        if ($name) {
-            $user->name = $name;
+        if ($email || $emailConfirm) {
+            if(!$email || !$emailConfirm) {
+                $log['message'] = 'Fill both fields.';
+                return $log;
+            }
+            if($email !== $emailConfirm) {
+                $log['message'] = 'Emails do not match.';
+                return $log;
+            }
+            if($email === $user->email) {
+                $log['message'] = 'New email must be different from the current one.';
+                return $log;
+            }
+        
+            $validator = Validator::make(
+            ['contact' => $email],
+            ['contact' => ['email:rfc,dns', 'regex:/\.[a-z]{2,}$/i']]
+            );
+
+            if($validator->fails()) {
+                $log['message'] = 'Invalid Email.';
+                return $log;
+            }
+
+            $emailExist = User::where('email', $email)->count();
+
+            if($emailExist > 0) {
+                $log['message'] = 'Email already in use.';
+                return $log;
+            }
+
+            $user->email = $email;
         }
 
-        if ($email) {
-            if ($email != $user->email) {
-                $emailExist = User::where('email', $email)->count();
-                if ($emailExist === 0) {
-                    $user->email = $email;
-                } else {
-                    $log['message'] = 'Email already exist';
-                    return $log;
-                }
+        foreach(['name', 'city', 'work'] as $field) {
+            if($request->filled($field)) {
+                $user->$field = $request->input($field);
             }
         }
 
@@ -59,29 +82,29 @@ class UserController extends Controller
             $date   = date_create_from_format($format, $birthdate);
 
             if ($date === false || $date->format($format) !== $birthdate) {
-                $log['message'] = 'Invalid birthdate';
+                $log['message'] = 'Invalid birthdate.';
                 return $log;
             }
 
             $user->birthdate = $birthdate;
         }
 
-        if ($city) {
-            $user->city = $city;
-        }
-
-        if ($work) {
-            $user->work = $work;
-        }
-
-        if ($password && $passwordConfirm) {
-            if ($password === $passwordConfirm) {
-                $hash = password_hash($password, PASSWORD_DEFAULT);
-                $user->password = $hash;
-            } else {
-                $log['message'] = 'Password does not match';
+        if ($password || $passwordConfirm) {
+            if(!$password || !$passwordConfirm) {
+                $log['message'] = 'Fill both fields.';
                 return $log;
             }
+            if($password !== $passwordConfirm) {
+                $log['message'] = 'Passwords do not match.';
+                return $log;
+            }
+            if(password_verify($passwordConfirm, $user->password)) {
+               $log['message'] = 'New password cannot be the current one.';
+               return $log;
+            }
+
+            $hash = password_hash($password, PASSWORD_DEFAULT);
+            $user->password = $hash;
         }
 
         $user->save();
