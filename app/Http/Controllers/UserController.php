@@ -8,6 +8,7 @@ use App\Models\UserRelation;
 use App\Models\Post;
 use Illuminate\Http\Request;
 use Illuminate\Support\Facades\Auth;
+use Illuminate\Support\Facades\Hash;
 use Illuminate\Support\Facades\Validator;
 use Intervention\Image\ImageManager;
 use Intervention\Image\Drivers\Gd\Driver;
@@ -71,7 +72,7 @@ class UserController extends Controller
             $user->email = $email;
         }
 
-        foreach(['name', 'city', 'work'] as $field) {
+        foreach (['name', 'city', 'work'] as $field) {
             if($request->filled($field)) {
                 $user->$field = $request->input($field);
             }
@@ -81,7 +82,7 @@ class UserController extends Controller
             $format = 'Y-m-d';
             $date   = date_create_from_format($format, $birthdate);
 
-            if ($date === false || $date->format($format) !== $birthdate) {
+            if($date === false || $date->format($format) !== $birthdate) {
                 $log['message'] = 'Invalid birthdate.';
                 return $log;
             }
@@ -98,13 +99,16 @@ class UserController extends Controller
                 $log['message'] = 'Passwords do not match.';
                 return $log;
             }
-            if(password_verify($passwordConfirm, $user->password)) {
-               $log['message'] = 'New password cannot be the current one.';
-               return $log;
+            if(strlen($password) < 8) {
+                $log['message'] = 'Password cannot be smaller than 8 characters.';
+                return $log;
+            }
+            if(Hash::check($password, $user->password)) {
+                $log['message'] = 'New password cannot be the current one.';
+                return $log;
             }
 
-            $hash = password_hash($password, PASSWORD_DEFAULT);
-            $user->password = $hash;
+            $user->password = Hash::make($password);
         }
 
         $user->save();
