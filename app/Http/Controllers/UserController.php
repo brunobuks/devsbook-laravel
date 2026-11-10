@@ -30,8 +30,8 @@ class UserController extends Controller
     {
         $log = ['message' => ''];
 
-        $email           = $request->input('email');
-        $emailConfirm    = $request->input('email_confirm');
+        $email           = strtolower((string) $request->input('email'));
+        $emailConfirm    = strtolower((string) $request->input('email_confirm'));
         $birthdate       = $request->input('birthdate');
         $password        = $request->input('password');
         $passwordConfirm = $request->input('password_confirm');
