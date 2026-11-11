@@ -13,8 +13,6 @@ use Illuminate\Support\Facades\Validator;
 use Intervention\Image\ImageManager;
 use Intervention\Image\Drivers\Gd\Driver;
 
-use function Laravel\Prompts\info;
-
 class UserController extends Controller
 {
     private ?User $loggedUser;
@@ -35,6 +33,7 @@ class UserController extends Controller
         $birthdate       = $request->input('birthdate');
         $password        = $request->input('password');
         $passwordConfirm = $request->input('password_confirm');
+        $currentPassword = $request->input('current_password');
 
         $user = $this->loggedUser;
 
@@ -53,8 +52,8 @@ class UserController extends Controller
             }
         
             $validator = Validator::make(
-            ['contact' => $email],
-            ['contact' => ['email:rfc,dns', 'regex:/\.[a-z]{2,}$/i']]
+                ['contact' => $email],
+                ['contact' => ['email:rfc,dns', 'regex:/\.[a-z]{2,}$/i']]
             );
 
             if($validator->fails()) {
@@ -91,16 +90,20 @@ class UserController extends Controller
         }
 
         if ($password || $passwordConfirm) {
-            if(!$password || !$passwordConfirm) {
-                $log['message'] = 'Fill both fields.';
+            if(!$password || !$passwordConfirm || !$currentPassword) {
+                $log['message'] = 'Fill all fields.';
+                return $log;
+            }
+            if(!Hash::check($currentPassword, $user->password)) {
+                $log['message'] = 'Current password incorrect.';
                 return $log;
             }
             if($password !== $passwordConfirm) {
                 $log['message'] = 'Passwords do not match.';
                 return $log;
             }
-            if(strlen($password) < 8) {
-                $log['message'] = 'Password cannot be smaller than 8 characters.';
+            if(mb_strlen($password) < 8 || mb_strlen($password) > 30) {
+                $log['message'] = 'Password cannot be smaller than 8 or bigger than 30 characters.';
                 return $log;
             }
             if(Hash::check($password, $user->password)) {
