@@ -32,14 +32,18 @@ class UserController extends Controller
         $emailConfirm    = strtolower((string) $request->input('email_confirm'));
         $birthdate       = $request->input('birthdate');
         $password        = $request->input('password');
+        $newPassword     = $request->input('new_password');
         $passwordConfirm = $request->input('password_confirm');
-        $currentPassword = $request->input('current_password');
-
+        
         $user = $this->loggedUser;
 
         if ($email || $emailConfirm) {
-            if(!$email || !$emailConfirm) {
-                $log['message'] = 'Fill both fields.';
+            if(!$password || !$email || !$emailConfirm) {
+                $log['message'] = 'Fill all fields.';
+                return $log;
+            }
+            if(!Hash::check($password, $user->password)) {
+                $log['message'] = 'Current password incorrect.';
                 return $log;
             }
             if($email !== $emailConfirm) {
@@ -89,29 +93,33 @@ class UserController extends Controller
             $user->birthdate = $birthdate;
         }
 
-        if ($password || $passwordConfirm) {
-            if(!$password || !$passwordConfirm || !$currentPassword) {
+        if ($newPassword || $passwordConfirm) {
+            if(!$password || !$newPassword || !$passwordConfirm) {
                 $log['message'] = 'Fill all fields.';
                 return $log;
             }
-            if(!Hash::check($currentPassword, $user->password)) {
+            if(!Hash::check($password, $user->password)) {
                 $log['message'] = 'Current password incorrect.';
                 return $log;
             }
-            if($password !== $passwordConfirm) {
+            if($newPassword !== $passwordConfirm) {
                 $log['message'] = 'Passwords do not match.';
                 return $log;
             }
-            if(mb_strlen($password) < 8 || mb_strlen($password) > 30) {
+            if(preg_match('/[\p{So}\x{10000}-\x{10FFFF}]/u', $newPassword)) {
+                $log['message'] = 'Password cannot contain emojis.';
+                return $log;
+            }
+            if(mb_strlen($newPassword) < 8 || mb_strlen($newPassword) > 30) {
                 $log['message'] = 'Password cannot be smaller than 8 or bigger than 30 characters.';
                 return $log;
             }
-            if(Hash::check($password, $user->password)) {
+            if(Hash::check($newPassword, $user->password)) {
                 $log['message'] = 'New password cannot be the current one.';
                 return $log;
             }
 
-            $user->password = Hash::make($password);
+            $user->password = Hash::make($newPassword);
         }
 
         $user->save();
