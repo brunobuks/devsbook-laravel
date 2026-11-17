@@ -56,8 +56,8 @@ class UserController extends Controller
             }
         
             $validator = Validator::make(
-                ['contact' => $email],
-                ['contact' => ['email:rfc,dns', 'regex:/\.[a-z]{2,}$/i']]
+                ['email' => $email],
+                ['email' => ['email:rfc,dns', 'regex:/\.[a-z]{2,}$/i']]
             );
 
             if($validator->fails()) {
@@ -75,18 +75,32 @@ class UserController extends Controller
             $user->email = $email;
         }
 
-        foreach (['name', 'city', 'work'] as $field) {
+        $limit = ['name' => 80, 'city' => 60, 'work' => 60];
+
+        foreach ($limit as $field => $max) {
             if($request->filled($field)) {
+                if(mb_strlen($request->input($field)) > $max) {
+                    $log['message'] = "Field {$field} accepts max {$max} characters.";
+                    return $log;
+                }
+
                 $user->$field = $request->input($field);
             }
         }
 
         if ($birthdate) {
-            $format = 'Y-m-d';
-            $date   = date_create_from_format($format, $birthdate);
+            $date   = date_create_from_format('!Y-m-d', $birthdate);
 
-            if($date === false || $date->format($format) !== $birthdate) {
+            if($date === false || $date->format('Y-m-d') !== $birthdate) {
                 $log['message'] = 'Invalid birthdate.';
+                return $log;
+            }
+
+            $today          = new DateTime('today');
+            $minimumAllowed = new DateTime('1900-01-01');
+
+            if($date > $today || $date < $minimumAllowed) {
+                $log['message'] = 'Birthdate must be between 1900 and today.';
                 return $log;
             }
 
