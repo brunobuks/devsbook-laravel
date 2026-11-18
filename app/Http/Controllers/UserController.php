@@ -43,7 +43,7 @@ class UserController extends Controller
                 return $log;
             }
             if(!Hash::check($password, $user->password)) {
-                $log['message'] = 'Current password incorrect.';
+                $log['message'] = 'Incorrect password.';
                 return $log;
             }
             if($email !== $emailConfirm) {
@@ -149,31 +149,29 @@ class UserController extends Controller
 
         $image = $request->file('avatar');
 
-        if ($image) {
-            if (in_array($image->getClientMimeType(), $allowedTypes)) {
-                $fileName = md5(time() . rand(0, 9999)) . '.jpg';
-
-                $destinationPath = public_path('/media/avatar');
-
-                $manager = ImageManager::usingDriver(Driver::class);
-                $img = $manager->decode($image->path())
-                    ->cover(200, 200)
-                    ->save($destinationPath . '/' . $fileName);
-
-                $user = $this->loggedUser;
-                $user->avatar = $fileName;
-                $user->save();
-
-                $log['url'] = url('/media/avatar/' . $fileName);
-
-            } else {
-                $log = ['message' => 'File type not supported'];
-                return $log;
-            }
-        } else {
-            $log = ['message' => 'No file sent'];
+        if (!$image) {
+            $log['message'] = 'No file sent.';
             return $log;
         }
+        if (!in_array($image->getClientMimeType(), $allowedTypes)) {
+            $log['message'] = 'File type not supported.';
+            return $log;
+        }
+
+        $fileName = md5(time() . rand(0, 9999)) . '.jpg';
+
+        $destinationPath = public_path('/media/avatar');
+
+        $manager = ImageManager::usingDriver(Driver::class);
+        $img = $manager->decode($image->path())
+                ->cover(200, 200)
+                ->save($destinationPath . '/' . $fileName);
+
+        $user = $this->loggedUser;
+        $user->avatar = $fileName;
+        $user->save();
+
+        $log['url'] = url('/media/avatar/' . $fileName);
 
         return $log;
     }
